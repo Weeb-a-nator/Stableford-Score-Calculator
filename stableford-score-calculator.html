@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Stableford Score Calculator</title>
+    <style>
+      :root {
+        --bg: #f3f7f0;
+        --panel: #ffffff;
+        --border: #d9e4d2;
+        --accent: #2f6f3e;
+        --accent-dark: #1d4f2b;
+        --text: #1f2a1f;
+        --muted: #5d6f5d;
+        --danger: #b84343;
+      }
+
+      * { box-sizing: border-box; }
+
+      body {
+        margin: 0;
+        font-family: Arial, sans-serif;
+        background: linear-gradient(180deg, #eef6ed 0%, #f7faf6 100%);
+        color: var(--text);
+      }
+
+      .container {
+        max-width: 980px;
+        margin: 40px auto;
+        padding: 24px;
+      }
+
+      .panel {
+        background: var(--panel);
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        box-shadow: 0 8px 24px rgba(23, 43, 26, 0.08);
+        padding: 24px;
+      }
+
+      h1 { margin-top: 0; color: var(--accent-dark); }
+
+      .controls {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+        gap: 16px;
+        align-items: end;
+        margin: 20px 0;
+      }
+
+      label {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        font-weight: 600;
+        color: var(--muted);
+      }
+
+      input, select, button { font: inherit; }
+
+      input[type="number"],
+      input[type="text"],
+      textarea,
+      select {
+        width: 100%;
+        padding: 10px 12px;
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        background: #fff;
+        color: var(--text);
+      }
+
+      .invalid-par { border-color: var(--danger) !important; }
+      textarea { resize: vertical; min-height: 80px; }
+
+      .checkbox-wrap {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        min-height: 42px;
+        font-weight: 600;
+        color: var(--muted);
+      }
+
+      .checkbox-wrap input { width: 18px; height: 18px; }
+      .hidden { display: none; }
+
+      .hole-table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-top: 16px;
+      }
+
+      .hole-table th,
+      .hole-table td {
+        border: 1px solid var(--border);
+        padding: 10px 8px;
+        text-align: center;
+      }
+
+      .hole-table th { background: #f5f8f4; }
+      .hole-table input { text-align: center; width: 90px; margin: 0 auto; }
+
+      .actions {
+        margin-top: 18px;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+      }
+
+      button {
+        background: var(--accent);
+        color: white;
+        border: none;
+        border-radius: 8px;
+        padding: 12px 18px;
+        cursor: pointer;
+        font-weight: 700;
+      }
+
+      button:hover { background: var(--accent-dark); }
+
+      .result-box {
+        margin-top: 20px;
+        padding: 16px;
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        background: #f8fbf7;
+      }
+
+      .result-box h2 { margin-top: 0; color: var(--accent-dark); }
+      .result-grid { display: grid; gap: 8px; margin: 12px 0; }
+      .error { color: var(--danger); margin-top: 12px; font-weight: 700; }
+      .summary { font-size: 1.1rem; margin-top: 8px; }
+      .result-spacer { height: 12px; }
+
+      footer {
+        max-width: 980px;
+        margin: 0 auto 24px;
+        padding: 0 24px;
+        text-align: center;
+        color: var(--muted);
+      }
+
+      footer a { color: var(--accent-dark); }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <div class="panel">
+        <h1>Stableford Score Calculator</h1>
+
+        <div class="controls">
+          <label for="courseSelect">
+            Course
+            <select id="courseSelect">
+              <option value="">Custom course</option>
+              <option value="kalumbila">Trident Country Club course</option>
+            </select>
+          </label>
+
+          <label id="customCourseNameLabel" for="customCourseName">
+            Custom course name
+            <input id="customCourseName" type="text" placeholder="Enter a course name" />
+          </label>
+
+          <label for="holesSelect">
+            Number of holes
+            <select id="holesSelect">
+              <option value="9">9</option>
+              <option value="18" selected>18</option>
+            </select>
+          </label>
+
+          <label id="nineSelectLabel" class="hidden" for="nineSelect">
+            Nine to play
+            <select id="nineSelect">
+              <option value="">Select a nine</option>
+              <option value="first">First nine</option>
+              <option value="second">Second nine</option>
+            </select>
+          </label>
+
+          <label for="courseHandicap">
+            Course handicap
+            <input id="courseHandicap" type="number" min="0" value="0" />
+          </label>
+
+          <div class="checkbox-wrap">
+            <input id="advancedInput" type="checkbox" />
+            <label for="advancedInput" style="margin:0;">Advanced mode</label>
+          </div>
+        </div>
+
+        <div id="advancedOptions" class="controls hidden">
+          <div class="checkbox-wrap">
+            <input id="bulkInput" type="checkbox" />
+            <label for="bulkInput" style="margin:0;">Enter holes in bulk</label>
+          </div>
+
+          <div class="checkbox-wrap">
+            <input id="capScoresInput" type="checkbox" />
+            <label for="capScoresInput" style="margin:0;">Cap scores at zero-point maximum</label>
+          </div>
+        </div>
+
+        <div id="bulkEntry" class="controls">
+          <label for="parsInput">
+            Par for each hole
+            <textarea id="parsInput"></textarea>
+          </label>
+
+          <label for="scoresInput">
+            Score for each hole
+            <textarea id="scoresInput"></textarea>
+          </label>
+
+          <label for="holeHandicaps">
+            Hole stroke indexes
+            <textarea id="holeHandicaps" placeholder="Leave blank to use 1..N"></textarea>
+          </label>
+        </div>
+
+        <div id="individualEntry" class="hidden">
+          <table class="hole-table">
+            <thead>
+              <tr>
+                <th>Hole</th>
+                <th>Par</th>
+                <th>Score</th>
+              </tr>
+            </thead>
+            <tbody id="holeRows"></tbody>
+          </table>
+
+          <div class="controls" style="margin-top: 18px;">
+            <label for="individualHandicaps">
+              Hole stroke indexes
+              <textarea id="individualHandicaps" placeholder="Leave blank to use 1..N"></textarea>
+            </label>
+          </div>
+        </div>
+
+        <div class="actions">
+          <button id="saveCourseButton" class="hidden" type="button">Save custom course</button>
+          <button id="calculateButton" type="button">Calculate</button>
+        </div>
+
+        <div id="results" class="result-box hidden"></div>
+        <div id="errorMessage" class="error"></div>
+      </div>
+    </div>
+
+    <footer>
+      <p>
+        Created by <a href="https://github.com/Weeb-a-nator">Weeb-a-nator</a> |
+        <a href="index.html">Projects</a> |
+        <a href="https://github.com/Weeb-a-nator/Weeb-a-nator.github.io/issues">Report a bug</a>
+      </p>
+    </footer>
+
+    <script src="script.js"></script>
+  </body>
+</html>
