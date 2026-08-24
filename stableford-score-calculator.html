@@ -90,6 +90,7 @@
         width: 100%;
         border-collapse: collapse;
         margin-top: 16px;
+        table-layout: fixed;
       }
 
       .hole-table th,
@@ -100,7 +101,15 @@
       }
 
       .hole-table th { background: #f5f8f4; }
-      .hole-table input { text-align: center; width: 90px; margin: 0 auto; }
+      .hole-table input { text-align: center; width: 100%; max-width: 90px; margin: 0 auto; }
+
+      @media (max-width: 600px) {
+        .container { padding: 12px; }
+        .panel { padding: 14px; }
+        .hole-table th,
+        .hole-table td { padding: 8px 3px; font-size: 0.82rem; overflow-wrap: anywhere; }
+        .hole-table input { padding: 8px 2px; font-size: 0.9rem; }
+      }
 
       .actions {
         margin-top: 18px;
@@ -195,51 +204,63 @@
 
         <div id="advancedOptions" class="controls hidden">
           <div class="checkbox-wrap">
-            <input id="bulkInput" type="checkbox" />
-            <label for="bulkInput" style="margin:0;">Enter holes in bulk</label>
-          </div>
-
-          <div class="checkbox-wrap">
             <input id="capScoresInput" type="checkbox" />
             <label for="capScoresInput" style="margin:0;">Cap scores at zero-point maximum</label>
           </div>
         </div>
 
-        <div id="bulkEntry" class="controls">
-          <label for="parsInput">
-            Par for each hole
-            <textarea id="parsInput"></textarea>
-          </label>
-
-          <label for="scoresInput">
-            Score for each hole
-            <textarea id="scoresInput"></textarea>
-          </label>
-
-          <label for="holeHandicaps">
-            Hole stroke indexes
-            <textarea id="holeHandicaps" placeholder="Leave blank to use 1..N"></textarea>
-          </label>
-        </div>
-
-        <div id="individualEntry" class="hidden">
-          <table class="hole-table">
+        <div id="individualEntry">
+          <table class="hole-table" id="firstNineTable">
             <thead>
               <tr>
                 <th>Hole</th>
                 <th>Par</th>
-                <th>Score</th>
+                <th>Stroke index</th>
+                <th># strokes</th>
+                <th>Hole-by-hole points</th>
+                <th class="strokes-output-column">Strokes for each hole</th>
               </tr>
             </thead>
-            <tbody id="holeRows"></tbody>
+            <tbody id="firstNineRows"></tbody>
+            <tfoot>
+              <tr>
+                <th id="firstNineTotalsLabel" colspan="4">Top nine totals</th>
+                <th id="firstNinePointsTotal"></th>
+                <th id="firstNineStrokesTotal" class="strokes-output-column"></th>
+              </tr>
+            </tfoot>
           </table>
 
-          <div class="controls" style="margin-top: 18px;">
-            <label for="individualHandicaps">
-              Hole stroke indexes
-              <textarea id="individualHandicaps" placeholder="Leave blank to use 1..N"></textarea>
-            </label>
-          </div>
+          <table class="hole-table hidden" id="secondNineTable">
+            <thead>
+              <tr>
+                <th>Hole</th>
+                <th>Par</th>
+                <th>Stroke index</th>
+                <th># strokes</th>
+                <th>Hole-by-hole points</th>
+                <th class="strokes-output-column">Strokes for each hole</th>
+              </tr>
+            </thead>
+            <tbody id="secondNineRows"></tbody>
+            <tfoot>
+              <tr>
+                <th colspan="4">Second nine totals</th>
+                <th id="secondNinePointsTotal"></th>
+                <th id="secondNineStrokesTotal" class="strokes-output-column"></th>
+              </tr>
+              <tr id="secondNineOverallTotals" class="overall-total-row">
+                <th colspan="4">Stableford total</th>
+                <th id="secondNineOverallPoints"></th>
+                <th class="strokes-output-column"></th>
+              </tr>
+              <tr id="secondNineTotalStrokes" class="overall-total-row">
+                <th colspan="4">Total strokes</th>
+                <th colspan="2" id="secondNineOverallStrokes"></th>
+              </tr>
+            </tfoot>
+          </table>
+
         </div>
 
         <div class="actions">

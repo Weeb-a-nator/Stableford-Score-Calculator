@@ -68,13 +68,11 @@ function validateCourseData(course) {
 }
 
 function clearParErrors() {
-  document.getElementById("parsInput").classList.remove("invalid-par");
   document.querySelectorAll(".par-input").forEach((input) => input.classList.remove("invalid-par"));
 }
 
 function markParErrors(individual) {
   if (!individual) {
-    document.getElementById("parsInput").classList.add("invalid-par");
     return;
   }
 
@@ -83,50 +81,6 @@ function markParErrors(individual) {
       input.classList.add("invalid-par");
     }
   });
-}
-
-function limitTextareaEntries(textarea, maximumEntries) {
-  const entries = textarea.value.trim().split(/\s+/).filter(Boolean);
-  if (entries.length > maximumEntries) {
-    textarea.value = entries.slice(0, maximumEntries).join(" ");
-  }
-}
-
-function selectNineEntries(textarea, nine) {
-  const entries = textarea.value.trim().split(/\s+/).filter(Boolean);
-  if (entries.length >= 18) {
-    const start = nine === "second" ? 9 : 0;
-    textarea.value = entries.slice(start, start + 9).join(" ");
-  }
-}
-
-function requiresNineSelection() {
-  return Number(document.getElementById("holesSelect").value) === 9
-    && document.getElementById("courseSelect").value
-    && !document.getElementById("nineSelect").value;
-}
-
-function updateEntryLimits() {
-  const holes = Number(document.getElementById("holesSelect").value);
-  if (requiresNineSelection()) {
-    return;
-  }
-
-  ["parsInput", "scoresInput", "holeHandicaps", "individualHandicaps"].forEach((id) => {
-    limitTextareaEntries(document.getElementById(id), holes);
-  });
-}
-
-function updateScorePlaceholder() {
-  const holes = Number(document.getElementById("holesSelect").value);
-  const scoreExamples = holes === 9
-    ? "5 4 6 3 5 4 5 4 4"
-    : "5 4 6 3 5 4 5 4 4 7 5 4 6 4 5 3 5 4";
-  const parExamples = holes === 9
-    ? "4 4 5 3 4 4 5 3 4"
-    : "4 4 5 3 4 4 5 3 4 4 5 3 4 4 5 3 4 4";
-  document.getElementById("parsInput").placeholder = `Example: ${parExamples}`;
-  document.getElementById("scoresInput").placeholder = `Example: ${scoreExamples}`;
 }
 
 function updateNineSelection() {
@@ -143,12 +97,7 @@ function updateCustomCourseControls() {
 
 function updateAdvancedMode() {
   const advanced = document.getElementById("advancedInput").checked;
-  const bulkInput = document.getElementById("bulkInput");
-  if (!advanced) {
-    bulkInput.checked = false;
-  }
   document.getElementById("advancedOptions").classList.toggle("hidden", !advanced);
-  updateEntryMode();
 }
 
 function switchToCustomCourseOnEdit() {
@@ -165,10 +114,6 @@ function switchToCustomCourseOnEdit() {
 }
 
 function applyNineSelection() {
-  if (requiresNineSelection()) {
-    return;
-  }
-
   const nine = document.getElementById("nineSelect").value;
   if (!nine) {
     return;
@@ -186,37 +131,19 @@ function applyNineSelection() {
     values[id] = entryValues.slice(start, start + 9).join(" ");
     return values;
   }, {});
-  setEntryValues(selectedEntries);
-  if (!document.getElementById("bulkInput").checked) {
-    buildHoleRows();
-  }
+  buildHoleRows(selectedEntries);
   activeNine = nine;
-  updateEntryLimits();
 }
 
 let nineHoleEntrySource = null;
 let activeNine = null;
 
 function getEntryValues() {
-  const values = {
-    parsInput: document.getElementById("parsInput").value,
-    scoresInput: document.getElementById("scoresInput").value,
-    holeHandicaps: document.getElementById("holeHandicaps").value,
-    individualHandicaps: document.getElementById("individualHandicaps").value
+  return {
+    pars: [...document.querySelectorAll(".par-input")].map((input) => input.value).join(" "),
+    scores: [...document.querySelectorAll(".score-input")].map((input) => input.value).join(" "),
+    holeHandicaps: [...document.querySelectorAll(".handicap-input")].map((input) => input.value).join(" ")
   };
-
-  if (!document.getElementById("bulkInput").checked) {
-    values.parsInput = [...document.querySelectorAll(".par-input")].map((input) => input.value).join(" ");
-    values.scoresInput = [...document.querySelectorAll(".score-input")].map((input) => input.value).join(" ");
-  }
-
-  return values;
-}
-
-function setEntryValues(values) {
-  Object.entries(values).forEach(([id, value]) => {
-    document.getElementById(id).value = value;
-  });
 }
 
 function updateNineHoleSourceFromCurrent(nine) {
@@ -238,7 +165,7 @@ function updateNineHoleSourceFromCurrent(nine) {
 
 function restoreFullRoundEntries() {
   if (nineHoleEntrySource) {
-    setEntryValues(nineHoleEntrySource);
+    buildHoleRows(nineHoleEntrySource);
     nineHoleEntrySource = null;
   }
   activeNine = null;
@@ -261,10 +188,7 @@ function handleHolesChange() {
   }
 
   updateNineSelection();
-  updateEntryLimits();
-  if (!document.getElementById("bulkInput").checked) {
-    buildHoleRows();
-  }
+  buildHoleRows();
 }
 
 function handleCourseChange() {
@@ -273,7 +197,6 @@ function handleCourseChange() {
   activeNine = null;
   updateNineSelection();
   updateCustomCourseControls();
-  updateEntryLimits();
 }
 
 const coursePresets = {
@@ -338,29 +261,22 @@ function saveCustomCourse() {
       throw new Error("Enter a name for the custom course.");
     }
 
-    let pars;
-    let holeHandicaps;
-    if (!document.getElementById("bulkInput").checked) {
-      pars = [...document.querySelectorAll(".par-input")].map((input) => Number(input.value));
-      if (pars.length !== holes || pars.some((par) => !Number.isInteger(par))) {
-        throw new Error(`Enter valid par values for all ${holes} holes.`);
-      }
-      validatePars(pars);
-      const scores = [...document.querySelectorAll(".score-input")].map((input) => Number(input.value));
-      if (scores.length !== holes) {
-        throw new Error(`Enter valid scores for all ${holes} holes.`);
-      }
-      validateScores(scores);
-      holeHandicaps = getHoleHandicaps(holes, document.getElementById("individualHandicaps").value);
-      pars = pars.join(" ");
-    } else {
-      const parsedPars = parseNumbers(document.getElementById("parsInput").value, holes, 1);
-      validatePars(parsedPars);
-      pars = parsedPars.join(" ");
-      holeHandicaps = getHoleHandicaps(holes, document.getElementById("holeHandicaps").value).join(" ");
+    const pars = [...document.querySelectorAll(".par-input")].map((input) => Number(input.value));
+    if (pars.length !== holes || pars.some((par) => !Number.isInteger(par))) {
+      throw new Error(`Enter valid par values for all ${holes} holes.`);
     }
+    validatePars(pars);
+    const scores = [...document.querySelectorAll(".score-input")].map((input) => Number(input.value));
+    if (scores.length !== holes) {
+      throw new Error(`Enter valid scores for all ${holes} holes.`);
+    }
+    validateScores(scores);
+    const holeHandicaps = getHoleHandicaps(
+      holes,
+      [...document.querySelectorAll(".handicap-input")].map((input) => input.value).join(" ")
+    );
 
-    const course = { name, holes, pars, holeHandicaps };
+    const course = { name, holes, pars: pars.join(" "), holeHandicaps: holeHandicaps.join(" ") };
     document.cookie = `${customCourseCookieName}=${encodeURIComponent(JSON.stringify(course))}; max-age=31536000; path=/`;
     addSavedCourseOption(course);
     document.getElementById("courseSelect").value = "savedCustom";
@@ -370,48 +286,33 @@ function saveCustomCourse() {
   }
 }
 
-function buildHoleRows() {
-  const holeRows = document.getElementById("holeRows");
+function buildHoleRows(values = {}) {
+  const firstNineRows = document.getElementById("firstNineRows");
+  const secondNineRows = document.getElementById("secondNineRows");
+  const secondNineTable = document.getElementById("secondNineTable");
   const holes = Number(document.getElementById("holesSelect").value);
-  const pars = document.getElementById("parsInput").value.trim().split(/\s+/).filter(Boolean);
-  const scores = document.getElementById("scoresInput").value.trim().split(/\s+/).filter(Boolean);
+  const pars = (values.pars || "").trim().split(/\s+/).filter(Boolean);
+  const scores = (values.scores || "").trim().split(/\s+/).filter(Boolean);
+  const holeHandicaps = (values.holeHandicaps || "").trim().split(/\s+/).filter(Boolean);
 
-  holeRows.innerHTML = "";
+  firstNineRows.innerHTML = "";
+  secondNineRows.innerHTML = "";
+  secondNineTable.classList.toggle("hidden", holes === 9);
 
   for (let hole = 1; hole <= holes; hole += 1) {
     const row = document.createElement("tr");
     const par = pars.length === holes ? pars[hole - 1] : 4;
     const score = scores.length === holes ? scores[hole - 1] : 5;
+    const holeHandicap = holeHandicaps.length === holes ? holeHandicaps[hole - 1] : hole;
     row.innerHTML = `
       <td>${hole}</td>
       <td><input class="par-input" type="number" min="3" step="1" value="${par}" aria-label="Par for hole ${hole}" /></td>
-      <td><input class="score-input" type="number" min="1" step="1" value="${score}" aria-label="Score for hole ${hole}" /></td>
+      <td><input class="handicap-input" type="number" min="1" step="1" value="${holeHandicap}" aria-label="Stroke index for hole ${hole}" /></td>
+      <td><input class="score-input" type="number" min="1" step="1" value="${score}" aria-label="# strokes for hole ${hole}" /></td>
+      <td class="points-output"></td>
+      <td class="strokes-output"></td>
     `;
-    holeRows.appendChild(row);
-  }
-}
-
-function syncIndividualEntries() {
-  const pars = [...document.querySelectorAll(".par-input")].map((input) => input.value);
-  const scores = [...document.querySelectorAll(".score-input")].map((input) => input.value);
-  if (pars.length && scores.length) {
-    document.getElementById("parsInput").value = pars.join(" ");
-    document.getElementById("scoresInput").value = scores.join(" ");
-  }
-}
-
-function updateEntryMode() {
-  const isIndividual = !document.getElementById("bulkInput").checked;
-  const bulkEntry = document.getElementById("bulkEntry");
-  const individualEntry = document.getElementById("individualEntry");
-
-  bulkEntry.classList.toggle("hidden", isIndividual);
-  individualEntry.classList.toggle("hidden", !isIndividual);
-
-  if (isIndividual) {
-    buildHoleRows();
-  } else {
-    syncIndividualEntries();
+    (hole <= 9 ? firstNineRows : secondNineRows).appendChild(row);
   }
 }
 
@@ -423,16 +324,7 @@ function applyCoursePreset() {
 
   document.getElementById("holesSelect").value = String(preset.holes || 18);
   document.getElementById("nineSelect").value = "";
-  document.getElementById("parsInput").value = preset.pars;
-  document.getElementById("holeHandicaps").value = preset.holeHandicaps;
-  document.getElementById("individualHandicaps").value = preset.holeHandicaps;
-
-  if (!document.getElementById("bulkInput").checked) {
-    buildHoleRows();
-    document.querySelectorAll(".par-input").forEach((input, index) => {
-      input.value = preset.pars.split(" ")[index];
-    });
-  }
+  buildHoleRows({ pars: preset.pars, holeHandicaps: preset.holeHandicaps });
 }
 
 function getScoringScores(pars, scores, holeHandicaps, courseHandicap, capScores) {
@@ -460,47 +352,41 @@ function renderResults(points, scores, advanced = false) {
   const total = points.reduce((sum, value) => sum + value, 0);
   const holes = points.length;
 
-  const holeList = points.map((point, index) => `<span>H${index + 1}: ${point}</span>`).join(" ");
+  document.querySelectorAll(".points-output").forEach((cell, index) => {
+    cell.textContent = points[index] ?? "";
+  });
+  document.querySelectorAll(".strokes-output").forEach((cell, index) => {
+    cell.textContent = scores[index] ?? "";
+  });
+  document.querySelectorAll(".strokes-output-column, .strokes-output").forEach((element) => {
+    element.classList.toggle("hidden", !advanced);
+  });
+  const firstNinePoints = points.slice(0, 9).reduce((sum, value) => sum + value, 0);
+  const secondNinePoints = points.slice(9).reduce((sum, value) => sum + value, 0);
+  const firstNineStrokes = scores.slice(0, 9).reduce((sum, value) => sum + value, 0);
+  const secondNineStrokes = scores.slice(9).reduce((sum, value) => sum + value, 0);
+  document.querySelectorAll(".overall-total-row").forEach((row) => {
+    row.classList.add("hidden");
+  });
+  ["secondNineOverallTotals", "secondNineTotalStrokes"].forEach((id) => {
+    document.getElementById(id).classList.toggle("hidden", holes !== 18);
+  });
+  document.getElementById("firstNineTotalsLabel").textContent = holes === 9 ? "Nine-hole totals" : "Top nine totals";
+  document.getElementById("firstNinePointsTotal").textContent = firstNinePoints;
+  document.getElementById("secondNinePointsTotal").textContent = holes === 18 ? secondNinePoints : "";
+  document.getElementById("firstNineStrokesTotal").textContent = firstNineStrokes;
+  document.getElementById("secondNineStrokesTotal").textContent = holes === 18 ? secondNineStrokes : "";
+  document.getElementById("secondNineOverallPoints").textContent = holes === 18 ? total : "";
+  document.getElementById("secondNineOverallStrokes").textContent = holes === 18 ? scores.reduce((sum, value) => sum + value, 0) : "";
 
-  let extraSummary = "";
-  if (holes === 18) {
-    const firstNine = scores.slice(0, 9).reduce((sum, value) => sum + value, 0);
-    const secondNine = scores.slice(9).reduce((sum, value) => sum + value, 0);
-    const totalStrokes = scores.reduce((sum, value) => sum + value, 0);
-    extraSummary = `
-      <h2>First 9 strokes: ${firstNine}</h2>
-      <h2>Second 9 strokes: ${secondNine}</h2>
-      <h2>Total strokes: ${totalStrokes}</h2>
-    `;
-  } else {
-    const totalStrokes = scores.reduce((sum, value) => sum + value, 0);
-    extraSummary = `<h2>Total strokes: ${totalStrokes}</h2>`;
-  }
-
-  const advancedSummary = advanced ? `
-    <h2>Strokes for each hole</h2>
-    <div class="summary">${scores.map((score, index) => `<span>H${index + 1}: ${score}</span>`).join(" ")}</div>
-  ` : "";
-
-  results.innerHTML = `
-    <h2>Hole-by-hole points</h2>
-    <div class="summary">${holeList}</div>
-    <div class="result-spacer"></div>
-    <h2>Stableford total: ${total} points</h2>
-    <div class="result-spacer"></div>
-    ${advancedSummary}
-    <div class="result-spacer"></div>
-    ${extraSummary}
-  `;
-
-  results.classList.remove("hidden");
+  results.innerHTML = "";
+  results.classList.add("hidden");
 }
 
 function calculateRound() {
   const holes = Number(document.getElementById("holesSelect").value);
   const courseHandicap = Number(document.getElementById("courseHandicap").value || 0);
   const errorMessage = document.getElementById("errorMessage");
-  const individual = !document.getElementById("bulkInput").checked;
   const advanced = document.getElementById("advancedInput").checked;
   const capScores = advanced && document.getElementById("capScoresInput").checked;
   clearParErrors();
@@ -510,41 +396,30 @@ function calculateRound() {
     let scores;
     let holeHandicaps;
 
-    if (individual) {
-      const rows = [...document.querySelectorAll(".hole-row")];
-      const holeData = Array.from(document.querySelectorAll(".par-input")).map((parInput, index) => {
-        const par = Number(parInput.value);
-        const scoreInput = document.querySelectorAll(".score-input")[index];
-        const score = Number(scoreInput.value);
-        return { par, score };
-      });
+    const holeData = Array.from(document.querySelectorAll(".par-input")).map((parInput, index) => {
+      const par = Number(parInput.value);
+      const scoreInput = document.querySelectorAll(".score-input")[index];
+      const score = Number(scoreInput.value);
+      return { par, score };
+    });
 
-      if (holeData.some(({ par, score }) => Number.isNaN(par) || Number.isNaN(score) || score < 1)) {
-        throw new Error("Enter valid par and score values for every hole.");
-      }
-
-      pars = holeData.map(({ par }) => par);
-      try {
-        validatePars(pars);
-      } catch (error) {
-        markParErrors(true);
-        throw error;
-      }
-      scores = holeData.map(({ score }) => score);
-      validateScores(scores);
-      holeHandicaps = getHoleHandicaps(holes, document.getElementById("individualHandicaps").value);
-    } else {
-      pars = parseNumbers(document.getElementById("parsInput").value, holes, 1);
-      try {
-        validatePars(pars);
-      } catch (error) {
-        markParErrors(false);
-        throw error;
-      }
-      scores = parseNumbers(document.getElementById("scoresInput").value, holes, 1);
-      validateScores(scores);
-      holeHandicaps = getHoleHandicaps(holes, document.getElementById("holeHandicaps").value);
+    if (holeData.some(({ par, score }) => Number.isNaN(par) || Number.isNaN(score) || score < 1)) {
+      throw new Error("Enter valid par and score values for every hole.");
     }
+
+    pars = holeData.map(({ par }) => par);
+    try {
+      validatePars(pars);
+    } catch (error) {
+      markParErrors(true);
+      throw error;
+    }
+    scores = holeData.map(({ score }) => score);
+    validateScores(scores);
+    holeHandicaps = getHoleHandicaps(
+      holes,
+      [...document.querySelectorAll(".handicap-input")].map((input) => input.value).join(" ")
+    );
 
     const scoringScores = getScoringScores(pars, scores, holeHandicaps, courseHandicap, capScores);
     const points = calculateScore(pars, scores, holeHandicaps, courseHandicap, capScores);
@@ -559,7 +434,6 @@ function calculateRound() {
 document.addEventListener("DOMContentLoaded", () => {
   const holesSelect = document.getElementById("holesSelect");
   const courseSelect = document.getElementById("courseSelect");
-  const bulkInput = document.getElementById("bulkInput");
   const calculateButton = document.getElementById("calculateButton");
   const saveCourseButton = document.getElementById("saveCourseButton");
   const advancedInput = document.getElementById("advancedInput");
@@ -568,35 +442,24 @@ document.addEventListener("DOMContentLoaded", () => {
   updateCustomCourseControls();
 
   holesSelect.addEventListener("change", handleHolesChange);
-  holesSelect.addEventListener("change", updateScorePlaceholder);
 
   const nineSelect = document.getElementById("nineSelect");
   courseSelect.addEventListener("change", handleCourseChange);
   nineSelect.addEventListener("change", applyNineSelection);
-  bulkInput.addEventListener("change", updateEntryMode);
   calculateButton.addEventListener("click", calculateRound);
   saveCourseButton.addEventListener("click", saveCustomCourse);
   advancedInput.addEventListener("change", updateAdvancedMode);
 
-  ["parsInput", "scoresInput", "holeHandicaps", "individualHandicaps"].forEach((id) => {
-    document.getElementById(id).addEventListener("input", updateEntryLimits);
-  });
-  ["parsInput", "holeHandicaps", "individualHandicaps"].forEach((id) => {
-    document.getElementById(id).addEventListener("input", switchToCustomCourseOnEdit);
-  });
-  document.getElementById("parsInput").addEventListener("input", clearParErrors);
   document.addEventListener("input", (event) => {
     if (event.target.classList.contains("par-input")) {
       event.target.classList.remove("invalid-par");
       switchToCustomCourseOnEdit();
-    } else if (event.target.id === "individualHandicaps") {
+    } else if (event.target.classList.contains("handicap-input") || event.target.classList.contains("score-input")) {
       switchToCustomCourseOnEdit();
     }
   });
 
-  updateEntryMode();
+  buildHoleRows();
   updateNineSelection();
-  updateEntryLimits();
-  updateScorePlaceholder();
   updateAdvancedMode();
 });
