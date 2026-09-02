@@ -302,7 +302,7 @@ function buildHoleRows(values = {}) {
   for (let hole = 1; hole <= holes; hole += 1) {
     const row = document.createElement("tr");
     const par = pars.length === holes ? pars[hole - 1] : 4;
-    const score = scores.length === holes ? scores[hole - 1] : 5;
+    const score = scores.length === holes ? scores[hole - 1] : 0;
     const holeHandicap = holeHandicaps.length === holes ? holeHandicaps[hole - 1] : hole;
     row.innerHTML = `
       <td>${hole}</td>
